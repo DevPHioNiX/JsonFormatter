@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JSON Formatter</title>
+    <style>
+        :root {
+            --bg: #f5f7fa;
+            --fg: #1e1e1e;
+            --card: #ffffff;
+            --border: #e0e0e0;
+            --accent: #0078d7;
+            --code-bg: #fafafa;
+        }
+        [data-theme="dark"] {
+            --bg: #1e1e1e;
+            --fg: #f5f7fa;
+            --card: #252526;
+            --border: #333;
+            --accent: #569cd6;
+            --code-bg: #1e1e1e;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .header {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        .toggle {
+            cursor: pointer;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: filter 0.25s ease;
+        }
+        .toggle:hover {
+            filter: brightness(1.1);
+        }
+        .main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            padding: 1rem 2rem;
+        }
+        textarea {
+            width: 100%;
+            height: 100%;
+            resize: none;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--fg);
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        pre {
+            margin: 0;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--code-bg);
+            color: var(--fg);
+            overflow: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .error {
+            color: red;
+            white-space: pre-wrap;
+        }
+        @media (max-width: 768px) {
+            .main {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>JSON Formatter</h1>
+        <button id="modeToggle" class="toggle">Dark Mode</button>
+    </header>
+    <section class="main">
+        <textarea id="jsonInput" placeholder="Paste your JSON here..."></textarea>
+        <pre id="jsonOutput" aria-live="polite">Formatted JSON will appear here...</pre>
+    </section>
+
+    <script>
+        const input = document.getElementById("jsonInput");
+        const output = document.getElementById("jsonOutput");
+        const toggleBtn = document.getElementById("modeToggle");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+        function setTheme(dark) {
+            document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+            toggleBtn.textContent = dark ? "Light Mode" : "Dark Mode";
+        }
+        setTheme(prefersDark);
+
+        toggleBtn.addEventListener("click", () => {
+            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+            setTheme(!isDark);
+        });
+
+        function formatJSON(value) {
+            try {
+                const obj = JSON.parse(value);
+                return JSON.stringify(obj, null, 4);
+            } catch (err) {
+                const lineMatch = err.message.match(/at position (\d+)/);
+                if (lineMatch) {
+                    const pos = parseInt(lineMatch[1]);
+                    const lines = value.substring(0, pos).split("\n");
+                    const lineNumber = lines.length;
+					input.setSelectionRange(pos, pos);
+					input.scrollIntoView({ behavior: "smooth", block: "center" });
+                    return `Error on line ${lineNumber}: ${err.message}`;
+                }
+				input.setSelectionRange(pos, pos);
+				input.scrollIntoView({ behavior: "smooth", block: "center" });
+                return `${err.message}`;
+            }
+        }
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+
+        function updateOutput() {
+            const formatted = formatJSON(input.value.trim());
+            output.innerHTML = escapeHtml(formatted);
+            if (formatted.includes("<span class=\"error\">")) {
+                output.innerHTML = formatted;
+            }
+        }
+
+        input.addEventListener("input", updateOutput);
+        input.addEventListener("paste", () => {
+            setTimeout(updateOutput, 0);
+        });
+
+        const sample = {
+            "hello": "world",
+            "numbers": [1, 2, 3],
+            "nested": { "a": true }
+        };
+        input.value = JSON.stringify(sample, null, 4);
+        updateOutput();
+    </script>
+</body>
+</html>
